@@ -113,14 +113,14 @@ NSString * const TCBlobDownloadErrorHTTPStatusKey = @"TCBlobDownloadErrorHTTPSta
         NSError *error = [NSError errorWithDomain:TCBlobDownloadErrorDomain
                                              code:TCBlobDownloadErrorInvalidURL
                                          userInfo:@{ NSLocalizedDescriptionKey:
-                                        [NSString stringWithFormat:@"Invalid URL provided: %@", self.fileRequest.URL] }];
-
+                                                         [NSString stringWithFormat:@"Invalid URL provided: %@", self.fileRequest.URL] }];
+        
         [self notifyFromCompletionWithError:error pathToFile:nil];
         return;
     }
-
+    
     NSFileManager *fm = [NSFileManager defaultManager];
-
+    
     // Create download directory
     NSError *createDirError = nil;
     if (![fm createDirectoryAtPath:self.pathToDownloadDirectory
@@ -144,14 +144,14 @@ NSString * const TCBlobDownloadErrorHTTPStatusKey = @"TCBlobDownloadErrorHTTPSta
         // Allow progress to reflect what's already downloaded
         self.receivedDataLength += fileSize;
     }
-
+    
     // Initialization of everything we'll need to download the file
     self.file = [NSFileHandle fileHandleForWritingAtPath:self.pathToFile];
     self.receivedDataBuffer = [[NSMutableData alloc] init];
     self.samplesOfDownloadedBytes = [[NSMutableArray alloc] init];
     self.connection = [[NSURLConnection alloc] initWithRequest:self.fileRequest
-                                                  delegate:self
-                                          startImmediately:NO];
+                                                      delegate:self
+                                              startImmediately:NO];
     
     if (self.connection && ![self isCancelled]) {
         [self willChangeValueForKey:@"isExecuting"];
@@ -165,7 +165,7 @@ NSString * const TCBlobDownloadErrorHTTPStatusKey = @"TCBlobDownloadErrorHTTPSta
         [self.connection scheduleInRunLoop:runLoop
                                    forMode:NSDefaultRunLoopMode];
         [self.connection start];
-
+        
         // Start the speed timer to schedule speed download on a periodic basis
         self.speedTimer = [NSTimer scheduledTimerWithTimeInterval:1.0
                                                            target:self
@@ -205,7 +205,7 @@ NSString * const TCBlobDownloadErrorHTTPStatusKey = @"TCBlobDownloadErrorHTTPSta
 {
     // If anything was previousy downloaded, add it to the total expected length for the progress property
     self.expectedDataLength = self.receivedDataLength + [response expectedContentLength];
-
+    
     NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
     NSError *error;
     if (httpResponse.statusCode >= 400) {
@@ -216,17 +216,17 @@ NSString * const TCBlobDownloadErrorHTTPStatusKey = @"TCBlobDownloadErrorHTTPSta
                                                                        [NSHTTPURLResponse localizedStringForStatusCode:httpResponse.statusCode]],
                                             TCBlobDownloadErrorHTTPStatusKey: @(httpResponse.statusCode) }];
     }
-
+    
     long long expected = @(self.expectedDataLength).longLongValue;
     if ([TCBlobDownloader freeDiskSpace].longLongValue < expected && expected != -1) {
         error = [NSError errorWithDomain:TCBlobDownloadErrorDomain
                                     code:TCBlobDownloadErrorNotEnoughFreeDiskSpace
                                 userInfo:@{ NSLocalizedDescriptionKey:@"Not enough free disk space" }];
     }
-
+    
     if (!error) {
         [self.receivedDataBuffer setData:nil];
-
+        
         dispatch_async(dispatch_get_main_queue(), ^{
             if (self.firstResponseBlock) {
                 self.firstResponseBlock(response);
@@ -245,17 +245,17 @@ NSString * const TCBlobDownloadErrorHTTPStatusKey = @"TCBlobDownloadErrorHTTPSta
 {
     [self.receivedDataBuffer appendData:data];
     self.receivedDataLength += [data length];
-
+    
     TCLog(@"%@ | %.2f%% - Received: %ld - Total: %ld",
           self.pathToFile,
           (float) self.receivedDataLength / self.expectedDataLength * 100,
           (long) self.receivedDataLength, (long) self.expectedDataLength);
-
+    
     if (self.receivedDataBuffer.length > kBufferSize && [self isExecuting]) {
         [self.file writeData:self.receivedDataBuffer];
         [self.receivedDataBuffer setData:nil];
     }
-
+    
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.progressBlock) {
             self.progressBlock(self.receivedDataLength, self.expectedDataLength, self.remainingTime, self.progress);
@@ -309,7 +309,7 @@ NSString * const TCBlobDownloadErrorHTTPStatusKey = @"TCBlobDownloadErrorHTTPSta
 
 
 - (void)finishOperationWithState:(TCBlobDownloadState)state
-{    
+{
     // Cancel the connection in case cancel was called directly
     [self.connection cancel];
     [self.speedTimer invalidate];
@@ -351,7 +351,7 @@ NSString * const TCBlobDownloadErrorHTTPStatusKey = @"TCBlobDownloadErrorHTTPSta
             }
         });
     }
-
+    
     // Notify from completion if the operation
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.completeBlock) {
@@ -372,7 +372,7 @@ NSString * const TCBlobDownloadErrorHTTPStatusKey = @"TCBlobDownloadErrorHTTPSta
     if (self.samplesOfDownloadedBytes.count > kNumberOfSamples) {
         [self.samplesOfDownloadedBytes removeObjectAtIndex:0];
     }
-
+    
     // Add the sample
     [self.samplesOfDownloadedBytes addObject:[NSNumber numberWithUnsignedLongLong:self.receivedDataLength - self.previousTotal]];
     self.previousTotal = self.receivedDataLength;
